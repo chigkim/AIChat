@@ -1,0 +1,6 @@
+kokoro-onnx
+openai
+pytz
+sounddevice
+soundfile
+toml

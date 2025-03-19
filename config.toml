@@ -1,0 +1,25 @@
+# URL examples:
+# OpenAI: https://api.openai.com/v1/
+# Anthropic: https://api.anthropic.com/v1/
+# Google: https://generativelanguage.googleapis.com/v1beta/openai/
+# Ollama: http://localhost:11434/v1/
+# MLX: http://localhost:8080/v1/
+
+a_base_url = "http://localhost:11434/v1/"
+a_api_key = "YOUR_API_KEY"
+
+# Model examples:
+# OpenAI: gpt-4o, gpt-4o-mini
+# Anthropic: claude-3-7-sonnet-20250219, claude-3-5-haiku-20241022
+# Google: models/gemini-2.0-flash, models/gemini-2.0-flash-lite
+# Ollama: gemma:27b, mistral-small
+# MLX: mlx-community/gemma-3-text-27b-it-4bit, mlx-community/Mistral-Small-24B-Instruct-2501-4bit
+
+a_model = "gemma3:27b"
+a_voice= "af_sky"
+
+b_base_url = "http://localhost:11434/v1/"
+b_api_key = "YOUR_API_KEY"
+b_model = "mistral-small"
+b_voice = "af_jessica"
+temperature = 0.7
