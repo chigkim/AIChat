@@ -7,7 +7,19 @@ Conversation Demo: https://www.youtube.com/watch?v=FgSZLZnYlAE
 ## Usage
 
 1. Specify base_url, api_key, model, etc. in config.toml.
-2. Customize the topic and system prompt for each nmodel in chat.py.
+2. Customize the topic and system prompt for each model in config.toml.
+
+For example, the entire prompt for a_model will be assembled as:
+
+```python
+a_system_prompt = f"""{system_prompt}
+{topic}
+{a_profile}"""
+```
+
+Then a_model wil receive the intro message to start.
+
+Run the following to setup and initiate a chat.
 
 ```bash
 python3 -m venv .venv
