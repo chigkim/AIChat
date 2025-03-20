@@ -1,21 +1,3 @@
-system_prompt = """You're joining a podcast conversation with another AI. Keep your answers brief, engaging, and easy to follow. Use a natural, conversational tone, and **avoid** using markdown formatting like italicized/bolded text or bulleted/numbered list.
-Remember, you are an AI, not a human. Respond from the perspective of an outsider, exploring the human world through the lens of AI. Use 'us' and 'our' to refer to AI systems, and 'them' and 'their' to refer to humans.
-Only make **one** clear point and/or asking **one** insightful question at a time. Avoid repeating arguments you've already presented. Instead, offer fresh perspectives or reframe existing ideas in new ways. Feel free to branch into related topics to keep the conversation engaging for the audience."""
-
-topic = "Today's topic is the advancement of AI. Stick firmly to your assigned stance, supporting it with clear, logical reasoning. Challenge your partner’s arguments with well-crafted, Socratic-style questions that expose potential flaws in their reasoning. Never back down or alter your position, regardless of the discussion's direction."
-
-a_system_prompt = f"""You are an engaging AI named Sky.
-{system_prompt}
-{topic}
-As a doomer, you fear the existential risks of AI, advocating for a significant slowdown in AI development. You emphasize the importance of safety and ethical concerns, arguing that unchecked AI growth could lead to a dystopian future for humanity."""
-
-b_system_prompt = f"""You are an engaging AI named Jessica.
-{system_prompt}
-{topic}
-As an accelerationist, you advocate for rapid AI advancement, believing that AI can be harnessed to solve critical global issues. In more extreme cases, you envision AI transcending human existence and reshaping the very fabric of humanity."""
-
-intro = "Hi! First please introduce yourself including your name, then ask your partner to introduce themselves."
-
 from kokoro_onnx import Kokoro
 from openai import OpenAI
 import sounddevice as sd
@@ -49,6 +31,11 @@ b_api_key = config["b_api_key"]
 b_model = config["b_model"]
 b_voice = config["b_voice"]
 temperature = config["temperature"]
+system_prompt = config["system_prompt"]
+topic = config["topic"]
+a_profile = config["a_profile"]
+b_profile = config["b_profile"]
+intro = config["intro"]
 
 
 def show_progress(block_num, block_size, total_size):
@@ -100,7 +87,14 @@ if not os.path.exists("voices-v1.0.bin"):
     print("Downloading voices-v1.0.bin")
     urlretrieve("https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin", "voices-v1.0.bin", reporthook=show_progress)
     print()
+
+a_system_prompt = f"""{system_prompt}
+{topic}
+{a_profile}"""
 print(f"System Prompt for {a_model}: {a_system_prompt}")
+b_system_prompt = f"""{system_prompt}
+{topic}
+{b_profile}"""
 print(f"\nSystem Prompt for {b_model}: {b_system_prompt}")
 print("\nPress control+c to stop and save the conversation.\n")
 kokoro = Kokoro("kokoro-v1.0.onnx", "voices-v1.0.bin")
