@@ -1,4 +1,3 @@
-from kokoro_onnx import Kokoro
 from openai import OpenAI
 import sounddevice as sd
 import soundfile as sf
@@ -10,15 +9,17 @@ import os
 import toml
 from threading import Thread
 import time
-from urllib.request import urlretrieve
 import random
+import json
 import argparse
+from tts import generate_speech
+
 parser = argparse.ArgumentParser()
 parser.add_argument(
-	"-c",
-	"--config",
-	help="Configuration file. Default=config.toml",
-	default="config.toml",
+    "-c",
+    "--config",
+    help="Configuration file. Default=config.toml",
+    default="config.toml",
 )
 args = parser.parse_args()
 config = toml.load(open(args.config))
@@ -38,13 +39,6 @@ b_profile = config["b_profile"]
 intro = config["intro"]
 
 
-def show_progress(block_num, block_size, total_size):
-    downloaded = block_num * block_size
-    mb_downloaded = downloaded / (1024 * 1024)
-    mb_total = total_size / (1024 * 1024) if total_size > 0 else 0
-    percent = downloaded * 100 / total_size if total_size > 0 else 0
-    print(f"\r{percent:.2f}% ({mb_downloaded:.2f} MB / {mb_total:.2f} MB)", end='')
-
 def ask(client, messages, model, temperature):
     try:
         response = client.chat.completions.create(
@@ -58,16 +52,22 @@ def ask(client, messages, model, temperature):
     except Exception as e:
         print(e)
 
+
 def random_pause(min_duration=0.5, max_duration=1.0, sample_rate=24000):
     silence_duration = random.uniform(min_duration, max_duration)
     silence = np.zeros(int(silence_duration * sample_rate))
     return silence
 
-def generate_audio(text, voice, l, r, speed=1.0, lang="en-us"):
-    samples, sample_rate = kokoro.create(text, voice=voice, speed=speed, lang=lang)
+
+def generate_audio(text, voice, pan=0.5, speed=1.0, lang="en-us"):
+    samples, sample_rate = generate_speech(text, voice=voice, speed=speed, lang=lang)
     samples = np.concatenate([samples, random_pause(sample_rate=sample_rate)])
-    samples = np.column_stack((samples*l, samples*r))
+    angle = pan * np.pi / 2
+    l = np.cos(angle)
+    r = np.sin(angle)
+    samples = np.column_stack((samples * l, samples * r))
     return samples, sample_rate
+
 
 def play(samples, sample_rate):
     sd.play(samples, sample_rate)
@@ -76,17 +76,9 @@ def play(samples, sample_rate):
     sf.write(f"samples/{date}.wav", samples, sample_rate)
     sd.wait()
 
+
 a_client = OpenAI(base_url=a_base_url, api_key=a_api_key)
 b_client = OpenAI(base_url=b_base_url, api_key=b_api_key)
-
-if not os.path.exists("kokoro-v1.0.onnx"):
-    print("Downloading kokoro-v1.0.onnx")
-    urlretrieve("https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx", "kokoro-v1.0.onnx", reporthook=show_progress)
-    print()
-if not os.path.exists("voices-v1.0.bin"):
-    print("Downloading voices-v1.0.bin")
-    urlretrieve("https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin", "voices-v1.0.bin", reporthook=show_progress)
-    print()
 
 a_system_prompt = f"""{system_prompt}
 {topic}
@@ -97,7 +89,7 @@ b_system_prompt = f"""{system_prompt}
 {b_profile}"""
 print(f"\nSystem Prompt for {b_model}: {b_system_prompt}")
 print("\nPress control+c to stop and save the conversation.\n")
-kokoro = Kokoro("kokoro-v1.0.onnx", "voices-v1.0.bin")
+
 sd.default.latency = 1.0
 sd.default.blocksize = 8192
 try:
@@ -114,9 +106,9 @@ play_thread = Thread()
 try:
     while True:
         response = ask(a_client, a_messages, a_model, temperature)
-        a_messages.append({"role": "assistant", "content":response})
-        b_messages.append({"role": "user", "content":response})
-        samples, sample_rate = generate_audio(response, a_voice, 0.8, 1.0)
+        a_messages.append({"role": "assistant", "content": response})
+        b_messages.append({"role": "user", "content": response})
+        samples, sample_rate = generate_audio(response, a_voice, 0.55)
         wavs.append(samples)
         while play_thread.is_alive():
             time.sleep(0.1)
@@ -124,11 +116,11 @@ try:
         play_thread.start()
         response = f"{a_model}: {response}\n"
         print(response)
-        file.write(response+"\n")
+        file.write(response + "\n")
         response = ask(b_client, b_messages, b_model, temperature)
-        b_messages.append({"role": "assistant", "content":response})
-        a_messages.append({"role": "user", "content":response})
-        samples, sample_rate = generate_audio(response, b_voice, 1.0, 0.8)
+        b_messages.append({"role": "assistant", "content": response})
+        a_messages.append({"role": "user", "content": response})
+        samples, sample_rate = generate_audio(response, b_voice, 0.45)
         wavs.append(samples)
         while play_thread.is_alive():
             time.sleep(0.1)
@@ -136,9 +128,10 @@ try:
         play_thread.start()
         response = f"{b_model}: {response}\n"
         print(response)
-        file.write(response+"\n")
+        file.write(response + "\n")
 except:
     sd.stop()
-    print("Saving podcast.wav and transcript.txt")    
+    print("Saving podcast.wav and transcript.txt")
     wav = np.concat(wavs)
     sf.write(f"podcast.wav", wav, 24000)
+    json.dump(a_messages, codecs.open("chat.json", "w", "utf-8"), indent="4")
